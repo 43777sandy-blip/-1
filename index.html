@@ -53,7 +53,6 @@
             overflow: hidden;
         }
 
-        /* Sidebar - Dynamic Status & Config */
         #sidebar {
             width: 320px;
             background-color: var(--card-bg);
@@ -72,7 +71,7 @@
             padding-bottom: 8px;
         }
 
-        .api-config, .character-status, .value-panel, .save-panel, .theme-panel {
+        .character-status, .value-panel, .save-panel, .theme-panel {
             margin-bottom: 20px;
         }
 
@@ -138,7 +137,6 @@
             margin-top: 4px;
         }
 
-        /* Main Chat Container */
         #main-container {
             flex: 1;
             display: flex;
@@ -212,7 +210,6 @@
             border: 1px solid var(--accent-border);
         }
 
-        /* Input Controls Area */
         #input-container {
             padding: 16px 20px;
             background-color: var(--card-bg);
@@ -266,7 +263,6 @@
             padding: 4px;
         }
 
-        /* Setup Modal/Overlay */
         #setup-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -318,16 +314,6 @@
                 <button onclick="loadGame()">讀取進度</button>
             </div>
             <button onclick="clearSave()" style="background:#5a1818; margin-top:4px;">清除本地存檔</button>
-        </div>
-
-        <div class="api-config">
-            <h3>API 設定</h3>
-            <label>API Endpoint</label>
-            <input type="text" id="api-url" value="https://api.openai.com/v1/chat/completions">
-            <label>API Key</label>
-            <input type="password" id="api-key" placeholder="sk-...">
-            <label>Model</label>
-            <input type="text" id="api-model" value="gpt-4o">
         </div>
 
         <div class="character-status">
@@ -446,7 +432,7 @@
     </div>
 
     <script>
-const NPC_AVATARS = {
+        const NPC_AVATARS = {
             "金善旴 (Sunwoo)": "sunwoo.png",
             "孫英宰 (Eric)": "eric.png",
             "李柱延 (Juyeon)": "juyeon.png",
@@ -460,53 +446,22 @@ const NPC_AVATARS = {
             target: {
                 name: "",
                 favor: 0,
-                favorDelta: "0%",
+                favorDelta: "+0%",
                 thought: "尚無",
                 period: "開學季"
             },
-            history: [],
+            turnCount: 0,
             chatMessages: [],
             currentOptions: [],
             currentTheme: "gryffindor"
         };
 
-        const SYSTEM_PROMPT = `你是一個乙女向同人文字RPG遊戲《THE BOYZ霍格華茲模擬器》的GM。
-請嚴格遵守以下規則：
-1. 語言：必須全篇使用繁體中文。請確保所有霍格華茲相關名詞皆使用台灣繁體譯名（例如：葛萊分多、史萊哲林、雷文克勞、赫夫帕夫、霍格華茲、霍格華茲特快車、麥教授、鄧不利多、石內卜、霍格華茲村等）。
-2. 敘事：第二人稱（你），文風朴素直接，禁止詩化或奇幻史詩感。每次故事發展不少於500字。
-3. 數值系統：每次玩家行動後，都必須更新攻略對象的數值，包括：
-   - 內心想法 (Thought)
-   - 好感度 (Favorability，嚴禁一次增加超過5%，且僅在關鍵事件增加)
-   - 好感度變化 (Delta，例如 +2%, -1%, +0%)
-   - 當前時期 (Period)
-4. 對話與頭像結構：請以 JSON 格式輸出回應，以便前端渲染動態頭像與數值面板。
-
-請每次輸出符合以下 JSON 結構：
-{
-  "sender": "角色名稱或旁白",
-  "text": "劇本文本（至少500字，描述劇情發展，第二人稱）",
-  "stats": {
-    "targetName": "攻略對象名",
-    "favor": 15,
-    "favorDelta": "+2%",
-    "thought": "當前內心想法",
-    "period": "開學第一天"
-  },
-  "options": [
-    "可選行動1",
-    "可選行動2",
-    "可選行動3"
-  ]
-}`;
-
-        // 切換主題
         function changeTheme(themeName) {
             document.documentElement.setAttribute('data-house', themeName);
             gameState.currentTheme = themeName;
             document.getElementById('theme-select').value = themeName;
         }
 
-        // 當創建角色卡選擇學院時同步切換主題
         function syncHouseTheme(houseZh) {
             const houseMap = {
                 '葛萊分多': 'gryffindor',
@@ -519,22 +474,15 @@ const NPC_AVATARS = {
             }
         }
 
-        // 存檔至 LocalStorage
         function saveGame() {
             if (!gameState.player.name) {
                 alert("尚未建立角色，無法存檔！");
                 return;
             }
-            const saveData = {
-                gameState: gameState,
-                apiUrl: document.getElementById('api-url').value,
-                apiModel: document.getElementById('api-model').value
-            };
-            localStorage.setItem('hogwarts_tbz_save', JSON.stringify(saveData));
+            localStorage.setItem('hogwarts_tbz_save', JSON.stringify({ gameState }));
             alert("遊戲進度已成功儲存至本地！");
         }
 
-        // 自 LocalStorage 讀取存檔
         function loadGame() {
             const savedStr = localStorage.getItem('hogwarts_tbz_save');
             if (!savedStr) {
@@ -545,13 +493,8 @@ const NPC_AVATARS = {
                 const parsed = JSON.parse(savedStr);
                 gameState = parsed.gameState;
                 
-                if (parsed.apiUrl) document.getElementById('api-url').value = parsed.apiUrl;
-                if (parsed.apiModel) document.getElementById('api-model').value = parsed.apiModel;
-
-                // 恢復主題
                 changeTheme(gameState.currentTheme || 'gryffindor');
 
-                // 恢復玩家資料顯示
                 document.getElementById('player-summary').innerHTML = `
                     <b>姓名：</b>${gameState.player.name}<br>
                     <b>學院/年級：</b>${gameState.player.house} / ${gameState.player.year}<br>
@@ -560,12 +503,10 @@ const NPC_AVATARS = {
                     <b>初始關係：</b>${gameState.player.rel}
                 `;
 
-                // 恢復面板
                 if (gameState.target && gameState.target.name) {
                     renderStatsPanel(gameState.target);
                 }
 
-                // 清空並重新渲染對話視窗
                 document.getElementById('chat-window').innerHTML = '';
                 if (gameState.chatMessages && gameState.chatMessages.length > 0) {
                     gameState.chatMessages.forEach(msg => {
@@ -573,21 +514,17 @@ const NPC_AVATARS = {
                     });
                 }
 
-                // 恢復選項按鈕
                 renderOptions(gameState.currentOptions || []);
-
-                // 隱藏設定遮罩
                 document.getElementById('setup-overlay').style.display = 'none';
 
                 alert("成功讀取本地存檔！");
             } catch (e) {
-                alert("讀取存檔失敗，檔案可能已損壞。");
+                alert("讀取存檔失敗。");
             }
         }
 
-        // 清除存檔
         function clearSave() {
-            if (confirm("確定要清除本地存檔嗎？此動作無法復原。")) {
+            if (confirm("確定要清除本地存檔嗎？")) {
                 localStorage.removeItem('hogwarts_tbz_save');
                 alert("存檔已清除。");
             }
@@ -608,11 +545,8 @@ const NPC_AVATARS = {
             };
 
             gameState.target.name = gameState.player.target;
-
-            // 同步學院主題色
             syncHouseTheme(gameState.player.house);
 
-            // 渲染玩家資料
             document.getElementById('player-summary').innerHTML = `
                 <b>姓名：</b>${gameState.player.name}<br>
                 <b>學院/年級：</b>${gameState.player.house} / ${gameState.player.year}<br>
@@ -622,109 +556,67 @@ const NPC_AVATARS = {
             `;
 
             document.getElementById('setup-overlay').style.display = 'none';
-
-            const initPrompt = `【玩家角色卡確認】
-姓名：${gameState.player.name}
-年級：${gameState.player.year}
-血統：${gameState.player.blood}
-學院：${gameState.player.house}
-攻略對象：${gameState.player.target}
-與攻略對象關係：${gameState.player.rel}
-男性競爭者：${gameState.player.maleComp}
-女性競爭者：${gameState.player.femaleComp}
-起始節點：${gameState.player.startNode}
-
-請先重複確認玩家設定，然後根據起始節點開始遊戲第一回合劇情。`;
-
-            sendApiRequest(initPrompt, true);
+            generateNextTurn("開始遊戲");
         }
 
-        async function sendApiRequest(userMessageText, isSystemInit = false) {
-            const apiUrl = document.getElementById('api-url').value;
-            const apiKey = document.getElementById('api-key').value;
-            const model = document.getElementById('api-model').value;
-
-            if (!isSystemInit) {
-                appendMessage(gameState.player.name, userMessageText, gameState.player.avatar, 'user');
+        function generateNextTurn(actionText) {
+            if (actionText !== "開始遊戲") {
+                appendMessage(gameState.player.name, actionText, gameState.player.avatar, 'user');
             }
 
-            let messages = [
-                { role: "system", content: SYSTEM_PROMPT }
-            ];
+            gameState.turnCount++;
+            
+            // 本地故事與數值產生器（完全免 API）
+            setTimeout(() => {
+                let deltaVal = (actionText === "開始遊戲") ? 0 : Math.floor(Math.random() * 4) + 1; // +1% ~ +4%
+                gameState.target.favor += deltaVal;
+                let deltaStr = deltaVal > 0 ? `+${deltaVal}%` : `+0%`;
 
-            gameState.history.forEach(h => messages.push(h));
+                let stories = [
+                    `你確認了自己的身份：${gameState.player.name}，屬於${gameState.player.house}學院的${gameState.player.year}學生。此時你正處於${gameState.player.startNode}的場景中。\n\n周圍的人聲喧囂，霍格華茲特快車的蒸汽車輪開始轟鳴運轉。你抬頭看向車廂走廊，正好瞥見了${gameState.player.target}經過。他的目光在你的院徽上記錄了片刻，眼神中帶著一絲疏離與審視。\n\n「又是一個新學期。」他低聲自語了一句，隨手理了理袍角，並沒有主動向你搭話，但你知道，你們的交集才剛剛開始。`,
+                    
+                    `你選擇了行動：『${actionText}』。\n\n過道上的風吹過，${gameState.player.target}微微停下了腳步。他轉過頭看向你，眉頭稍微挑了挑。對於身為${gameState.player.house}、並且血統為${gameState.player.blood}的你，他似乎有一套屬於自己的判斷標準。\n\n「既然你這麼說了，」他聲音平淡，卻帶著幾分藏不住的興味，「這學期最好別在課堂上給我添麻煩。」他說完便轉身離去，但眼神顯然比剛才多逗留了幾秒。`,
+                    
+                    `隨著對話推進，城堡 corridor 的壁畫正在低聲討論著你們。${gameState.player.target}靠在牆邊，雙手環胸看著你。對於你剛剛『${actionText}』的舉動，他顯得有些出乎意料。\n\n「你平時都是這麼直截了當的嗎？」他嘴角扯起一抹難以察覺的弧度。雖然表面上依然保持著距離感，但他看向你的眼神已經沒有最初那麼冷漠了。`
+                ];
 
-            const currentInput = isSystemInit ? userMessageText : `玩家行動：${userMessageText}`;
-            messages.push({ role: "user", content: currentInput });
+                let idx = Math.min(gameState.turnCount - 1, stories.length - 1);
+                let textRes = stories[idx] || `你對${gameState.player.target}執行了行動：『${actionText}』。\n\n霍格華茲的長廊上傳來腳步聲。${gameState.player.target}停下動作看向你，眼神裡多了一分耐人尋味的意味。雖然你們目前的關係依然是${gameState.player.rel}，但隨着互動增加，某種微妙的變化正漸漸在你們之間發酵。`;
 
-            // 沒設定 Key 時的模擬回應
-            if (!apiKey) {
-                setTimeout(() => {
-                    const mockRes = {
-                        sender: gameState.player.target,
-                        text: `【模擬回應 - 請設置 API Key 啟用真正 LLM】\n你確認了自己的身份：${gameState.player.name}，屬於${gameState.player.house}學院的${gameState.player.year}學生。此時你正處於${gameState.player.startNode}的場景中。\n\n周圍的人聲喧囂，霍格華茲特快車的蒸汽車輪開始轟鳴運轉。你抬頭看向車廂走廊，正好瞥見了${gameState.player.target}經過。他的目光在你的院徽上記錄了片刻，眼神中帶著一絲疏離與審視。\n\n「又是一個新學期。」他低聲自語了一句，隨手理了理袍角，並沒有主動向你搭話，但你知道，你們的交集才剛剛開始。`,
-                        stats: {
-                            targetName: gameState.player.target,
-                            favor: 5,
-                            favorDelta: "+0%",
-                            thought: "這傢伙也是這個年級的？希望這學期別太麻煩。",
-                            period: "車廂啟程"
-                        },
-                        options: [
-                            "主動打招呼並詢問是否有空位",
-                            "冷漠地移開視線，繼續看自己的書",
-                            "故意掉落魔咒課本吸引他的注意"
-                        ]
-                    };
-                    handleApiResponse(mockRes, currentInput);
-                }, 800);
-                return;
-            }
+                let thoughts = [
+                    "這傢伙也是這個年級的？希望這學期別太麻煩。",
+                    "剛才那舉動……倒是比其他人有趣一些。",
+                    "稍微有點意思了，再觀察看看吧。"
+                ];
 
-            try {
-                const res = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey}`
+                let responseObj = {
+                    sender: gameState.player.target,
+                    text: textRes,
+                    stats: {
+                        targetName: gameState.player.target,
+                        favor: gameState.target.favor,
+                        favorDelta: deltaStr,
+                        thought: thoughts[Math.min(gameState.turnCount - 1, thoughts.length - 1)] || "對你的注意力逐漸增加。",
+                        period: "學期進行中"
                     },
-                    body: JSON.stringify({
-                        model: model,
-                        messages: messages,
-                        response_format: { type: "json_object" }
-                    })
-                });
+                    options: [
+                        "主動邀請他一起去霍格華茲村",
+                        "保持距離，冷靜地回覆他的話",
+                        "拿出魔咒課本請教他問題"
+                    ]
+                };
 
-                const data = await res.json();
-                const parsedContent = JSON.parse(data.choices[0].message.content);
-                handleApiResponse(parsedContent, currentInput);
+                const avatar = NPC_AVATARS[responseObj.sender] || NPC_AVATARS["旁白/系統"];
+                appendMessage(responseObj.sender, responseObj.text, avatar, 'npc', responseObj.stats.favorDelta);
 
-            } catch (err) {
-                alert("API 請求失敗：" + err.message);
-            }
-        }
+                gameState.target = responseObj.stats;
+                renderStatsPanel(responseObj.stats);
 
-        function handleApiResponse(data, userInput) {
-            gameState.history.push({ role: "user", content: userInput });
-            gameState.history.push({ role: "assistant", content: JSON.stringify(data) });
+                gameState.currentOptions = responseObj.options;
+                renderOptions(responseObj.options);
 
-            const avatar = NPC_AVATARS[data.sender] || NPC_AVATARS["旁白/系統"];
-            appendMessage(data.sender, data.text, avatar, 'npc', data.stats ? data.stats.favorDelta : null);
-
-            if (data.stats) {
-                gameState.target = data.stats;
-                renderStatsPanel(data.stats);
-            }
-
-            gameState.currentOptions = data.options || [];
-            renderOptions(gameState.currentOptions);
-
-            // 自動觸發一次增量存檔
-            localStorage.setItem('hogwarts_tbz_save', JSON.stringify({
-                gameState: gameState,
-                apiUrl: document.getElementById('api-url').value,
-                apiModel: document.getElementById('api-model').value
-            }));
+                localStorage.setItem('hogwarts_tbz_save', JSON.stringify({ gameState }));
+            }, 300);
         }
 
         function renderStatsPanel(stats) {
@@ -741,10 +633,8 @@ const NPC_AVATARS = {
         }
 
         function appendMessage(sender, text, avatarUrl, type, delta = null) {
-            // 記錄至 gameState 供存檔恢復
             if (!gameState.chatMessages) gameState.chatMessages = [];
             gameState.chatMessages.push({ sender, text, avatarUrl, type, delta });
-
             renderMessageDOM(sender, text, avatarUrl, type, delta);
         }
 
@@ -775,26 +665,21 @@ const NPC_AVATARS = {
                     const btn = document.createElement('button');
                     btn.className = 'opt-btn';
                     btn.innerText = opt;
-                    btn.onclick = () => sendOption(opt);
+                    btn.onclick = () => generateNextTurn(opt);
                     optContainer.appendChild(btn);
                 });
             }
-        }
-
-        function sendOption(optText) {
-            sendApiRequest(optText);
         }
 
         function sendCustomAction() {
             const input = document.getElementById('custom-input');
             const val = input.value.trim();
             if (val) {
-                sendApiRequest(val);
+                generateNextTurn(val);
                 input.value = '';
             }
         }
 
-        // 頁面載入時檢查是否有存檔
         window.onload = () => {
             if (localStorage.getItem('hogwarts_tbz_save')) {
                 console.log("發現本地存檔，可點擊「讀取進度」進行載入。");
