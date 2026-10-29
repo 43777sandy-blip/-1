@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-house="gryffindor">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE BOYZ 霍格華茲模擬器</title>
+    <style>
+        :root {
+            --bg-color: #0f1115;
+            --card-bg: #1a1d24;
+            --text-main: #e0e0e0;
+            --text-dim: #9a9a9a;
+            --border-color: #2a2e39;
+            --user-msg-bg: #263238;
+            --npc-msg-bg: #1e2638;
+            
+            /* 預設主題色（葛萊分多） */
+            --accent-primary: #740001;
+            --accent-secondary: #d3a625;
+            --accent-border: #ae0001;
+        }
+
+        /* 學院主題色 CSS 變數定義 */
+        html[data-house="gryffindor"] {
+            --accent-primary: #740001;
+            --accent-secondary: #d3a625;
+            --accent-border: #ae0001;
+        }
+        html[data-house="slytherin"] {
+            --accent-primary: #1a472a;
+            --accent-secondary: #aaaaaa;
+            --accent-border: #2a623d;
+        }
+        html[data-house="ravenclaw"] {
+            --accent-primary: #0e1a40;
+            --accent-secondary: #946b2d;
+            --accent-border: #222f5b;
+        }
+        html[data-house="hufflepuff"] {
+            --accent-primary: #ecb939;
+            --accent-secondary: #372e29;
+            --accent-border: #f0c75e;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar - Dynamic Status & Config */
+        #sidebar {
+            width: 320px;
+            background-color: var(--card-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        #sidebar h2, #sidebar h3 {
+            color: var(--accent-secondary);
+            margin-top: 0;
+            border-bottom: 1px solid var(--accent-border);
+            padding-bottom: 8px;
+        }
+
+        .api-config, .character-status, .value-panel, .save-panel, .theme-panel {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        input, select, textarea, button {
+            width: 100%;
+            padding: 8px 12px;
+            margin-bottom: 12px;
+            background: #0f1115;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: var(--accent-primary);
+            color: #fff;
+            border: 1px solid var(--accent-border);
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s, background-color 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+            border-color: var(--accent-secondary);
+        }
+
+        .save-btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .save-btn-group button {
+            flex: 1;
+        }
+
+        .stat-box {
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            border-left: 3px solid var(--accent-secondary);
+        }
+
+        .stat-title {
+            font-weight: bold;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stat-desc {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        /* Main Chat Container */
+        #main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-color);
+        }
+
+        #chat-window {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            max-width: 85%;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message.npc {
+            align-self: flex-start;
+        }
+
+        .avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background-color: #333;
+            object-fit: cover;
+            border: 2px solid var(--accent-secondary);
+            flex-shrink: 0;
+        }
+
+        .msg-content {
+            background-color: var(--npc-msg-bg);
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            line-height: 1.6;
+            font-size: 0.95rem;
+            white-space: pre-wrap;
+        }
+
+        .message.user .msg-content {
+            background-color: var(--user-msg-bg);
+        }
+
+        .msg-sender {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+            font-weight: bold;
+        }
+
+        .delta-tag {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            margin-left: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--accent-secondary);
+            border: 1px solid var(--accent-border);
+        }
+
+        /* Input Controls Area */
+        #input-container {
+            padding: 16px 20px;
+            background-color: var(--card-bg);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #options-container {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .opt-btn {
+            flex: 1;
+            min-width: 200px;
+            background: #232730;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            font-weight: normal;
+            text-align: left;
+            padding: 10px;
+            font-size: 0.85rem;
+        }
+
+        .opt-btn:hover {
+            background: #2e3440;
+            border-color: var(--accent-secondary);
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-row input {
+            margin-bottom: 0;
+        }
+
+        .input-row button {
+            width: 100px;
+            margin-bottom: 0;
+        }
+
+        .watermark {
+            font-size: 0.75rem;
+            color: #555;
+            text-align: center;
+            padding: 4px;
+        }
+
+        /* Setup Modal/Overlay */
+        #setup-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .setup-card {
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 8px;
+            width: 500px;
+            max-height: 85vh;
+            overflow-y: auto;
+            border: 1px solid var(--accent-secondary);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Info Panel -->
+    <div id="sidebar">
+        <h2>霍格華茲模擬器</h2>
+        <div class="watermark">請勿在任何平台上二次上傳我的模擬器</div>
+        
+        <div class="theme-panel">
+            <h3>學院主題切換</h3>
+            <select id="theme-select" onchange="changeTheme(this.value)">
+                <option value="gryffindor">葛萊分多 (Gryffindor)</option>
+                <option value="slytherin">史萊哲林 (Slytherin)</option>
+                <option value="ravenclaw">雷文克勞 (Ravenclaw)</option>
+                <option value="hufflepuff">赫夫帕夫 (Hufflepuff)</option>
+            </select>
+        </div>
+
+        <div class="save-panel">
+            <h3>存檔管理</h3>
+            <div class="save-btn-group">
+                <button onclick="saveGame()">儲存進度</button>
+                <button onclick="loadGame()">讀取進度</button>
+            </div>
+            <button onclick="clearSave()" style="background:#5a1818; margin-top:4px;">清除本地存檔</button>
+        </div>
+
+        <div class="api-config">
+            <h3>API 設定</h3>
+            <label>API Endpoint</label>
+            <input type="text" id="api-url" value="https://api.openai.com/v1/chat/completions">
+            <label>API Key</label>
+            <input type="password" id="api-key" placeholder="sk-...">
+            <label>Model</label>
+            <input type="text" id="api-model" value="gpt-4o">
+        </div>
+
+        <div class="character-status">
+            <h3>玩家資料表</h3>
+            <div id="player-summary" style="font-size: 0.85rem; color: var(--text-dim);">尚未設定角色...</div>
+        </div>
+
+        <div class="value-panel">
+            <h3>攻略對象面板</h3>
+            <div id="target-stats">
+                <div style="font-size:0.85rem; color:#666;">尚未開始遊戲...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Game Section -->
+    <div id="main-container">
+        <div id="chat-window"></div>
+
+        <div id="input-container">
+            <div id="options-container"></div>
+            <div class="input-row">
+                <input type="text" id="custom-input" placeholder="或輸入自由發揮的行動..." onkeypress="if(event.key==='Enter') sendCustomAction()">
+                <button onclick="sendCustomAction()">發送行動</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Setup Character Overlay -->
+    <div id="setup-overlay">
+        <div class="setup-card">
+            <h2 style="color:var(--accent-secondary); margin-top:0;">建立角色卡</h2>
+            <p style="font-size:0.8rem; color:#aaa;">請先完成霍格華茲入學檔案設定：</p>
+            
+            <label>姓名（若有英文名請註明）</label>
+            <input type="text" id="init-name" value="秈萱 (Xuan)">
+
+            <div class="grid-2">
+                <div>
+                    <label>年級</label>
+                    <select id="init-year">
+                        <option value="5年級">5年級</option>
+                        <option value="6年級" selected>6年級</option>
+                        <option value="7年級">7年級</option>
+                    </select>
+                </div>
+                <div>
+                    <label>血統</label>
+                    <select id="init-blood">
+                        <option value="純血">純血</option>
+                        <option value="混血">混血</option>
+                        <option value="麻瓜出身">麻瓜出身</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div>
+                    <label>學院</label>
+                    <select id="init-house" onchange="syncHouseTheme(this.value)">
+                        <option value="葛萊分多">葛萊分多</option>
+                        <option value="史萊哲林">史萊哲林</option>
+                        <option value="雷文克勞">雷文克勞</option>
+                        <option value="赫夫帕夫">赫夫帕夫</option>
+                    </select>
+                </div>
+                <div>
+                    <label>攻略對象</label>
+                    <select id="init-target">
+                        <option value="金善旴 (Sunwoo)">金善旴 (Sunwoo)</option>
+                        <option value="孫英宰 (Eric)">孫英宰 (Eric)</option>
+                        <option value="李柱延 (Juyeon)">李柱延 (Juyeon)</option>
+                        <option value="金泳勳 (Younghoon)">金泳勳 (Younghoon)</option>
+                        <option value="李賢在 (Hyunjae)">李賢在 (Hyunjae)</option>
+                    </select>
+                </div>
+            </div>
+
+            <label>與攻略對象關係</label>
+            <select id="init-rel">
+                <option value="普通同學">普通同學</option>
+                <option value="陌生人">陌生人</option>
+                <option value="青梅竹馬">青梅竹馬</option>
+                <option value="死對頭">死對頭</option>
+                <option value="未婚夫妻">未婚夫妻</option>
+            </select>
+
+            <div class="grid-2">
+                <div>
+                    <label>男性競爭者</label>
+                    <select id="init-male-comp">
+                        <option value="否">否</option>
+                        <option value="是">是</option>
+                    </select>
+                </div>
+                <div>
+                    <label>女性競爭者</label>
+                    <select id="init-female-comp">
+                        <option value="否">否</option>
+                        <option value="是">是</option>
+                    </select>
+                </div>
+            </div>
+
+            <label>玩家頭像 URL</label>
+            <input type="text" id="init-avatar" value="https://api.dicebear.com/7.x/bottts/svg?seed=Xuan">
+
+            <label>起始節點</label>
+            <select id="init-node">
+                <option value="選項A：霍格華茲特快車（開學前）">選項A：霍格華茲特快車（開學前）</option>
+                <option value="選項B：開學首日（霍格華茲校內）">選項B：開學首日（霍格華茲校內）</option>
+            </select>
+
+            <button onclick="submitCharacterSetup()">確認並開始遊戲</button>
+        </div>
+    </div>
+
+    <script>
+        const NPC_AVATARS = {
+            "金善旴 (Sunwoo)": "image_0.png",
+            "孫英宰 (Eric)": "image_1.png",
+            "李柱延 (Juyeon)": "image_2.png",
+            "金泳勳 (Younghoon)": "image_3.png",
+            "李賢在 (Hyunjae)": "image_4.png",
+            "旁白/系統": "image_5.png"
+        };
+
+        let gameState = {
+            player: {},
+            target: {
+                name: "",
+                favor: 0,
+                favorDelta: "0%",
+                thought: "尚無",
+                period: "開學季"
+            },
+            history: [],
+            chatMessages: [],
+            currentOptions: [],
+            currentTheme: "gryffindor"
+        };
+
+        const SYSTEM_PROMPT = `你是一個乙女向同人文字RPG遊戲《THE BOYZ霍格華茲模擬器》的GM。
+請嚴格遵守以下規則：
+1. 語言：必須全篇使用繁體中文。請確保所有霍格華茲相關名詞皆使用台灣繁體譯名（例如：葛萊分多、史萊哲林、雷文克勞、赫夫帕夫、霍格華茲、霍格華茲特快車、麥教授、鄧不利多、石內卜、霍格華茲村等）。
+2. 敘事：第二人稱（你），文風朴素直接，禁止詩化或奇幻史詩感。每次故事發展不少於500字。
+3. 數值系統：每次玩家行動後，都必須更新攻略對象的數值，包括：
+   - 內心想法 (Thought)
+   - 好感度 (Favorability，嚴禁一次增加超過5%，且僅在關鍵事件增加)
+   - 好感度變化 (Delta，例如 +2%, -1%, +0%)
+   - 當前時期 (Period)
+4. 對話與頭像結構：請以 JSON 格式輸出回應，以便前端渲染動態頭像與數值面板。
+
+請每次輸出符合以下 JSON 結構：
+{
+  "sender": "角色名稱或旁白",
+  "text": "劇本文本（至少500字，描述劇情發展，第二人稱）",
+  "stats": {
+    "targetName": "攻略對象名",
+    "favor": 15,
+    "favorDelta": "+2%",
+    "thought": "當前內心想法",
+    "period": "開學第一天"
+  },
+  "options": [
+    "可選行動1",
+    "可選行動2",
+    "可選行動3"
+  ]
+}`;
+
+        // 切換主題
+        function changeTheme(themeName) {
+            document.documentElement.setAttribute('data-house', themeName);
+            gameState.currentTheme = themeName;
+            document.getElementById('theme-select').value = themeName;
+        }
+
+        // 當創建角色卡選擇學院時同步切換主題
+        function syncHouseTheme(houseZh) {
+            const houseMap = {
+                '葛萊分多': 'gryffindor',
+                '史萊哲林': 'slytherin',
+                '雷文克勞': 'ravenclaw',
+                '赫夫帕夫': 'hufflepuff'
+            };
+            if (houseMap[houseZh]) {
+                changeTheme(houseMap[houseZh]);
+            }
+        }
+
+        // 存檔至 LocalStorage
+        function saveGame() {
+            if (!gameState.player.name) {
+                alert("尚未建立角色，無法存檔！");
+                return;
+            }
+            const saveData = {
+                gameState: gameState,
+                apiUrl: document.getElementById('api-url').value,
+                apiModel: document.getElementById('api-model').value
+            };
+            localStorage.setItem('hogwarts_tbz_save', JSON.stringify(saveData));
+            alert("遊戲進度已成功儲存至本地！");
+        }
+
+        // 自 LocalStorage 讀取存檔
+        function loadGame() {
+            const savedStr = localStorage.getItem('hogwarts_tbz_save');
+            if (!savedStr) {
+                alert("查無本地存檔！");
+                return;
+            }
+            try {
+                const parsed = JSON.parse(savedStr);
+                gameState = parsed.gameState;
+                
+                if (parsed.apiUrl) document.getElementById('api-url').value = parsed.apiUrl;
+                if (parsed.apiModel) document.getElementById('api-model').value = parsed.apiModel;
+
+                // 恢復主題
+                changeTheme(gameState.currentTheme || 'gryffindor');
+
+                // 恢復玩家資料顯示
+                document.getElementById('player-summary').innerHTML = `
+                    <b>姓名：</b>${gameState.player.name}<br>
+                    <b>學院/年級：</b>${gameState.player.house} / ${gameState.player.year}<br>
+                    <b>血統：</b>${gameState.player.blood}<br>
+                    <b>攻略對象：</b>${gameState.player.target}<br>
+                    <b>初始關係：</b>${gameState.player.rel}
+                `;
+
+                // 恢復面板
+                if (gameState.target && gameState.target.name) {
+                    renderStatsPanel(gameState.target);
+                }
+
+                // 清空並重新渲染對話視窗
+                document.getElementById('chat-window').innerHTML = '';
+                if (gameState.chatMessages && gameState.chatMessages.length > 0) {
+                    gameState.chatMessages.forEach(msg => {
+                        renderMessageDOM(msg.sender, msg.text, msg.avatarUrl, msg.type, msg.delta);
+                    });
+                }
+
+                // 恢復選項按鈕
+                renderOptions(gameState.currentOptions || []);
+
+                // 隱藏設定遮罩
+                document.getElementById('setup-overlay').style.display = 'none';
+
+                alert("成功讀取本地存檔！");
+            } catch (e) {
+                alert("讀取存檔失敗，檔案可能已損壞。");
+            }
+        }
+
+        // 清除存檔
+        function clearSave() {
+            if (confirm("確定要清除本地存檔嗎？此動作無法復原。")) {
+                localStorage.removeItem('hogwarts_tbz_save');
+                alert("存檔已清除。");
+            }
+        }
+
+        function submitCharacterSetup() {
+            gameState.player = {
+                name: document.getElementById('init-name').value,
+                year: document.getElementById('init-year').value,
+                blood: document.getElementById('init-blood').value,
+                house: document.getElementById('init-house').value,
+                target: document.getElementById('init-target').value,
+                rel: document.getElementById('init-rel').value,
+                maleComp: document.getElementById('init-male-comp').value,
+                femaleComp: document.getElementById('init-female-comp').value,
+                avatar: document.getElementById('init-avatar').value,
+                startNode: document.getElementById('init-node').value
+            };
+
+            gameState.target.name = gameState.player.target;
+
+            // 同步學院主題色
+            syncHouseTheme(gameState.player.house);
+
+            // 渲染玩家資料
+            document.getElementById('player-summary').innerHTML = `
+                <b>姓名：</b>${gameState.player.name}<br>
+                <b>學院/年級：</b>${gameState.player.house} / ${gameState.player.year}<br>
+                <b>血統：</b>${gameState.player.blood}<br>
+                <b>攻略對象：</b>${gameState.player.target}<br>
+                <b>初始關係：</b>${gameState.player.rel}
+            `;
+
+            document.getElementById('setup-overlay').style.display = 'none';
+
+            const initPrompt = `【玩家角色卡確認】
+姓名：${gameState.player.name}
+年級：${gameState.player.year}
+血統：${gameState.player.blood}
+學院：${gameState.player.house}
+攻略對象：${gameState.player.target}
+與攻略對象關係：${gameState.player.rel}
+男性競爭者：${gameState.player.maleComp}
+女性競爭者：${gameState.player.femaleComp}
+起始節點：${gameState.player.startNode}
+
+請先重複確認玩家設定，然後根據起始節點開始遊戲第一回合劇情。`;
+
+            sendApiRequest(initPrompt, true);
+        }
+
+        async function sendApiRequest(userMessageText, isSystemInit = false) {
+            const apiUrl = document.getElementById('api-url').value;
+            const apiKey = document.getElementById('api-key').value;
+            const model = document.getElementById('api-model').value;
+
+            if (!isSystemInit) {
+                appendMessage(gameState.player.name, userMessageText, gameState.player.avatar, 'user');
+            }
+
+            let messages = [
+                { role: "system", content: SYSTEM_PROMPT }
+            ];
+
+            gameState.history.forEach(h => messages.push(h));
+
+            const currentInput = isSystemInit ? userMessageText : `玩家行動：${userMessageText}`;
+            messages.push({ role: "user", content: currentInput });
+
+            // 沒設定 Key 時的模擬回應
+            if (!apiKey) {
+                setTimeout(() => {
+                    const mockRes = {
+                        sender: gameState.player.target,
+                        text: `【模擬回應 - 請設置 API Key 啟用真正 LLM】\n你確認了自己的身份：${gameState.player.name}，屬於${gameState.player.house}學院的${gameState.player.year}學生。此時你正處於${gameState.player.startNode}的場景中。\n\n周圍的人聲喧囂，霍格華茲特快車的蒸汽車輪開始轟鳴運轉。你抬頭看向車廂走廊，正好瞥見了${gameState.player.target}經過。他的目光在你的院徽上記錄了片刻，眼神中帶著一絲疏離與審視。\n\n「又是一個新學期。」他低聲自語了一句，隨手理了理袍角，並沒有主動向你搭話，但你知道，你們的交集才剛剛開始。`,
+                        stats: {
+                            targetName: gameState.player.target,
+                            favor: 5,
+                            favorDelta: "+0%",
+                            thought: "這傢伙也是這個年級的？希望這學期別太麻煩。",
+                            period: "車廂啟程"
+                        },
+                        options: [
+                            "主動打招呼並詢問是否有空位",
+                            "冷漠地移開視線，繼續看自己的書",
+                            "故意掉落魔咒課本吸引他的注意"
+                        ]
+                    };
+                    handleApiResponse(mockRes, currentInput);
+                }, 800);
+                return;
+            }
+
+            try {
+                const res = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        messages: messages,
+                        response_format: { type: "json_object" }
+                    })
+                });
+
+                const data = await res.json();
+                const parsedContent = JSON.parse(data.choices[0].message.content);
+                handleApiResponse(parsedContent, currentInput);
+
+            } catch (err) {
+                alert("API 請求失敗：" + err.message);
+            }
+        }
+
+        function handleApiResponse(data, userInput) {
+            gameState.history.push({ role: "user", content: userInput });
+            gameState.history.push({ role: "assistant", content: JSON.stringify(data) });
+
+            const avatar = NPC_AVATARS[data.sender] || NPC_AVATARS["旁白/系統"];
+            appendMessage(data.sender, data.text, avatar, 'npc', data.stats ? data.stats.favorDelta : null);
+
+            if (data.stats) {
+                gameState.target = data.stats;
+                renderStatsPanel(data.stats);
+            }
+
+            gameState.currentOptions = data.options || [];
+            renderOptions(gameState.currentOptions);
+
+            // 自動觸發一次增量存檔
+            localStorage.setItem('hogwarts_tbz_save', JSON.stringify({
+                gameState: gameState,
+                apiUrl: document.getElementById('api-url').value,
+                apiModel: document.getElementById('api-model').value
+            }));
+        }
+
+        function renderStatsPanel(stats) {
+            document.getElementById('target-stats').innerHTML = `
+                <div class="stat-box">
+                    <div class="stat-title">
+                        <span>${stats.targetName}</span>
+                        <span>好感度: ${stats.favor}% (${stats.favorDelta})</span>
+                    </div>
+                    <div class="stat-desc"><b>當前狀態/時期：</b>${stats.period}</div>
+                    <div class="stat-desc"><b>內心想法：</b>${stats.thought}</div>
+                </div>
+            `;
+        }
+
+        function appendMessage(sender, text, avatarUrl, type, delta = null) {
+            // 記錄至 gameState 供存檔恢復
+            if (!gameState.chatMessages) gameState.chatMessages = [];
+            gameState.chatMessages.push({ sender, text, avatarUrl, type, delta });
+
+            renderMessageDOM(sender, text, avatarUrl, type, delta);
+        }
+
+        function renderMessageDOM(sender, text, avatarUrl, type, delta) {
+            const chatWin = document.getElementById('chat-window');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${type}`;
+
+            let deltaHtml = delta ? `<span class="delta-tag">好感度 ${delta}</span>` : '';
+
+            msgDiv.innerHTML = `
+                <img class="avatar" src="${avatarUrl}" alt="${sender}">
+                <div>
+                    <div class="msg-sender">${sender} ${deltaHtml}</div>
+                    <div class="msg-content">${text}</div>
+                </div>
+            `;
+
+            chatWin.appendChild(msgDiv);
+            chatWin.scrollTop = chatWin.scrollHeight;
+        }
+
+        function renderOptions(options) {
+            const optContainer = document.getElementById('options-container');
+            optContainer.innerHTML = '';
+            if (options && options.length > 0) {
+                options.forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.className = 'opt-btn';
+                    btn.innerText = opt;
+                    btn.onclick = () => sendOption(opt);
+                    optContainer.appendChild(btn);
+                });
+            }
+        }
+
+        function sendOption(optText) {
+            sendApiRequest(optText);
+        }
+
+        function sendCustomAction() {
+            const input = document.getElementById('custom-input');
+            const val = input.value.trim();
+            if (val) {
+                sendApiRequest(val);
+                input.value = '';
+            }
+        }
+
+        // 頁面載入時檢查是否有存檔
+        window.onload = () => {
+            if (localStorage.getItem('hogwarts_tbz_save')) {
+                console.log("發現本地存檔，可點擊「讀取進度」進行載入。");
+            }
+        };
+    </script>
+</body>
+</html>
